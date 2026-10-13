@@ -12,7 +12,7 @@ This application is not affiliated with Valve.
   launcher/build scripts, dependency files, README, and tests. Set up the Python
   environment using the instructions below to run it.
 - **Releases** can provide the ready-to-run `Frame Connect.exe` as a separate
-  download once the maintainer uploads it. The executable includes Python, Qt,
+  download. The executable includes Python, Qt,
   the theme, helper scripts, and the custom icon; no separate ICO folder is needed.
 
 The ICO folder, local backups, virtual environment, build output, executable,
