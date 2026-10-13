@@ -1,5 +1,9 @@
 # Frame Connect
 
+<p align="center">
+  <img src="docs/assets/frame-connect.png" alt="Frame Connect logo" width="160" height="160">
+</p>
+
 A small Python desktop companion for Steam Frame. Connect over SSH to see
 battery, storage, temperature, and RAM usage, and drag files from Windows Explorer into a folder
 on the headset.
