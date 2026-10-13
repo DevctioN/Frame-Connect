@@ -27,6 +27,7 @@ class ReleaseTests(unittest.TestCase):
             with patch.dict(os.environ), patch.object(build_exe, "__file__", str(root / "build_exe.py")), patch("build_exe.PyInstaller.__main__.run") as build, patch("build_exe.refresh_windows_icons"):
                 build_exe.main()
             options = build.call_args.args[0]
+            self.assertEqual(options[options.index("--name") + 1], "FrameConnect")
             icon = Path(options[options.index("--icon") + 1])
             self.assertTrue(icon.is_file())
             self.assertEqual(icon.parent, root / "build")
@@ -35,7 +36,7 @@ class ReleaseTests(unittest.TestCase):
     def test_release_uses_a_whitelist_and_keeps_corresponding_sources_separate(self):
         with fixture_directory() as root:
             (root / "pyproject.toml").write_text('[project]\nversion = "0.1.5"\n', encoding="utf-8")
-            (root / "Frame Connect.exe").write_bytes(b"test executable")
+            (root / "FrameConnect.exe").write_bytes(b"test executable")
             for name in ("LICENSE", "README.md", "THIRD_PARTY_NOTICES.txt", "SOURCES.md"):
                 (root / name).write_text("test notice", encoding="utf-8")
             (root / "licenses").mkdir()

@@ -163,7 +163,7 @@ def package_release(root, sources):
     source_zip = output / f"FrameConnect-v{version}-ThirdPartySources.zip"
     documents = ("LICENSE", "README.md", "THIRD_PARTY_NOTICES.txt", "SOURCES.md")
     with zipfile.ZipFile(windows, "w", compression=zipfile.ZIP_DEFLATED) as archive:
-        archive.write(root / "Frame Connect.exe", "FrameConnect.exe")
+        archive.write(root / "FrameConnect.exe", "FrameConnect.exe")
         for name in documents:
             archive.write(root / name, name)
         for path in sorted((root / "licenses").rglob("*")):

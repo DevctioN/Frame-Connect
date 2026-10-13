@@ -34,7 +34,7 @@ def main() -> None:
             raise SystemExit("Could not create an icon from the README logo.")
     options = [
         str(root / "main.py"),
-        "--name", "Frame Connect",
+        "--name", "FrameConnect",
         "--onefile",
         "--windowed",
         "--noconfirm",
