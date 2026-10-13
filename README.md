@@ -347,9 +347,10 @@ monitoring cadence, offline recovery, and headset folders beyond the tested
 destination still need hardware verification. Missing battery data is shown as
 **Unavailable**.
 Home/Settings navigation, confirmation and cancellation, power-request errors,
-monitoring cleanup, and late-response handling are covered by local tests. Actual
-hardware shutdown still needs testing; development checks do not switch the
-headset off.
+monitoring cleanup, and late-response handling are covered by local tests.
+The user has confirmed successful remote shutdown on a Steam Frame, with green
+success messages in both the bottom connection footer and the Settings Power card.
+Automated development checks do not switch the headset off.
 
 Byte progress is tested for unequal file sizes, missing or regressing samples,
 empty files, cancellation, and completion. A local integration check used
@@ -378,5 +379,5 @@ were also checked at small and normal window sizes.
 - `remote_files.py`: temporary headset-side folder and upload helper.
 - `tests/`: isolated UI, transport, and filesystem tests.
 
-The initial hardware milestones are complete: status readings and file transfer
-have both been confirmed on a Steam Frame.
+Status readings, file transfer, and remote shutdown have been confirmed on a
+Steam Frame.
