@@ -120,7 +120,7 @@ uv sync --locked --group build
 ```
 
 The [PyInstaller](https://pyinstaller.org/en/stable/usage.html) build produces
-`Frame Connect.exe` in the main project folder. Build files stay in `build\`. Only the build environment
+`FrameConnect.exe` in the main project folder. Build files stay in `build\`. Only the build environment
 needs PyInstaller; people running the executable do not need it.
 
 `prepare_release.py` downloads checksum-pinned Qt/PySide6 source archives into
