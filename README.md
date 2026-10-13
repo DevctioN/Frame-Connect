@@ -33,7 +33,7 @@ source control. These exclusions keep local files on the development PC;
 
 ## Run on this PC
 
-Double-click **`Frame Connect.exe`** in the main project folder. This standalone Windows app includes
+Double-click **`FrameConnect.exe`** in the main project folder. This standalone Windows app includes
 Python, Qt, the dark theme, and the headset helper scripts. You can move the
 executable to another folder; it does not need the project folder or a separate
 Python installation. Headset connections still use Windows' OpenSSH `ssh` and
