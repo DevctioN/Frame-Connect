@@ -127,6 +127,13 @@ class DiagnosticsTests(unittest.TestCase):
             window.logs_button.click()
         self.assertIn("Open it manually", window.log_status.text())
 
+    def test_settings_can_open_bundled_license_notices(self):
+        window = self.make_app()
+        window._set_busy(True)
+        with patch("app.QDesktopServices.openUrl", return_value=True) as open_url:
+            window.licenses_button.click()
+        self.assertEqual(Path(open_url.call_args.args[0].toLocalFile()).name, "THIRD_PARTY_NOTICES.txt")
+
     def test_background_main_qt_and_native_traces_persist_with_no_console(self):
         # A separate process proves real hook dispatch, including PyInstaller's
         # windowed stderr=None behavior. Dump a stack; do not cause a native fault.

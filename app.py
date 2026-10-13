@@ -425,6 +425,18 @@ class FrameConnectApp(QWidget):
         self.logs_button.setEnabled(directory is not None)
         diagnostics_layout.addWidget(self.logs_button, 0, Qt.AlignmentFlag.AlignRight)
         layout.addWidget(diagnostics_card)
+
+        about_card = QFrame()
+        about_card.setObjectName("card")
+        about_layout = QVBoxLayout(about_card)
+        about_layout.setContentsMargins(20, 20, 20, 20)
+        about_layout.setSpacing(12)
+        about_layout.addWidget(label("ABOUT", name="eyebrow"))
+        about_layout.addWidget(label(f"Frame Connect v{APP_VERSION}", name="connectionStatus"))
+        about_layout.addWidget(label("Built with Python and Qt/PySide6. Includes open-source libraries.", muted=True, wrap=True))
+        self.licenses_button = button("View licenses", self._open_licenses)
+        about_layout.addWidget(self.licenses_button, 0, Qt.AlignmentFlag.AlignRight)
+        layout.addWidget(about_card)
         layout.addStretch(1)
         self.settings_page.setWidget(body)
         self.pages.addWidget(self.settings_page)
@@ -434,6 +446,11 @@ class FrameConnectApp(QWidget):
         if directory is not None and not QDesktopServices.openUrl(QUrl.fromLocalFile(str(directory))):
             LOGGER.warning("Could not open diagnostic log folder")
             self.log_status.setText(f"Could not open the folder. Open it manually:\n{directory}")
+
+    def _open_licenses(self):
+        path = Path(__file__).with_name("THIRD_PARTY_NOTICES.txt")
+        if not path.is_file() or not QDesktopServices.openUrl(QUrl.fromLocalFile(str(path))):
+            QMessageBox.warning(self, "Licenses", "Could not open the license notices. See THIRD_PARTY_NOTICES.txt in the release download.")
 
     def _set_power_status(self, text, state="idle"):
         self._power_state = state

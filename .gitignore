@@ -8,5 +8,13 @@ dist/
 /Frame Connect.exe
 /ICO/
 /backups/
+/release/
 *.pem
 *.key
+.env
+.env.*
+!.env.example
+id_rsa
+id_ed25519
+frame-connect-log.txt*
+frame-connect-crash*.txt

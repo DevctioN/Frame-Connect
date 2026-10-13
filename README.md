@@ -15,9 +15,16 @@ This application is not affiliated with Valve.
 - **Code → Download ZIP** or a Git clone provides the Python source, theme,
   launcher/build scripts, dependency files, README, and tests. Set up the Python
   environment using the instructions below to run it.
-- **Releases** can provide the ready-to-run `Frame Connect.exe` as a separate
-  download. The executable includes Python, Qt,
-  the theme, helper scripts, and the custom icon; no separate ICO folder is needed.
+- **Releases** provide the Windows x64 download as `FrameConnect-v0.1.5-Windows-x64.zip`.
+  Extract it and run `FrameConnect.exe`. Keep the included license notices with
+  the app. Python, Qt, the theme, helper scripts and icon are bundled.
+- The companion `FrameConnect-v0.1.5-ThirdPartySources.zip` contains the source
+  of the Qt/PySide6 libraries shipped in that Windows build.
+
+Frame Connect's own code is licensed under the [MIT License](LICENSE).
+Bundled libraries retain their licenses; see [third-party notices](THIRD_PARTY_NOTICES.txt)
+and [library sources/rebuilding](SOURCES.md). **Settings → View licenses** opens
+the full notices from inside the app.
 
 The ICO folder, local backups, virtual environment, build output, executable,
 caches, and files matching the private-key ignore patterns are excluded from
@@ -34,11 +41,10 @@ Python installation. Headset connections still use Windows' OpenSSH `ssh` and
 
 ### Run from Python instead
 
-Python 3.15 is installed through `uv`. The normal `python` command currently
-resolves to the Windows Store shortcut. A working `.venv` has been created
-inside this project, so use this command in PowerShell from this folder:
+Install `uv`, then open PowerShell in the downloaded source folder and run:
 
 ```powershell
+uv sync --locked
 .\.venv\Scripts\python.exe main.py
 ```
 
@@ -86,8 +92,7 @@ from source, close the old window and open `run.cmd` again.
 
 The app uses [Qt for Python](https://doc.qt.io/qtforpython-6/) for its interface
 and native drag and drop, and the system's OpenSSH/SFTP clients for transfers.
-The official `PySide6-Essentials` package is already installed in this project's
-environment; it includes the Qt Widgets modules used here. The app
+The `PySide6-Essentials` dependency includes the Qt Widgets modules used here. The app
 opens without a headset; readings stay empty and file transfer stays disabled
 until a connection succeeds. There are no simulated readings in the app.
 
@@ -100,20 +105,30 @@ uv sync --locked
 
 ### Rebuild the Windows executable
 
-The custom icon is excluded from the source repository. Before building, supply
-an icon at `ICO/icon.ico`; the current build script requires this file. Running
-the Python source without it still works, using the default window icon.
+The private ICO folder is excluded from the repository. If `ICO/icon.ico` is
+absent, the build script creates an icon from the public README logo. You can
+also supply your own ICO file. Running the Python source without an ICO still
+works, using the default window icon.
 
 From this project folder on Windows:
 
 ```powershell
 uv sync --locked --group build
+.\.venv\Scripts\python.exe prepare_release.py --licenses-only
 .\.venv\Scripts\python.exe build_exe.py
+.\.venv\Scripts\python.exe prepare_release.py
 ```
 
 The [PyInstaller](https://pyinstaller.org/en/stable/usage.html) build produces
 `Frame Connect.exe` in the main project folder. Build files stay in `build\`. Only the build environment
 needs PyInstaller; people running the executable do not need it.
+
+`prepare_release.py` downloads checksum-pinned Qt/PySide6 source archives into
+the ignored `release/` folder, refreshes license notices, and creates the Windows
+ZIP, companion source ZIP and `SHA256SUMS.txt`. Use `--licenses-only` before
+building to prepare notices, then run it again after building to package the new
+EXE. Upload both ZIPs and the checksum file to the release. Source files and
+license notices belong in Git; generated release downloads do not.
 
 The custom icon is `ICO\icon.ico`. It is embedded in the executable and bundled
 for the app's window and taskbar icon. Replace that file and rebuild to change it.
@@ -128,9 +143,6 @@ Python. It uses
 which have CSS-like rules for colors, rounded corners, spacing, and button states.
 The interface and headset connection remain Python; no HTML, JavaScript,
 web server, or separate browser runtime is required.
-
-The previous Tkinter interface, tests and dependency lock are preserved in
-`backups/tkinter-before-qt/`; see its `RESTORE.md` for a rollback.
 
 ## Connection guide
 
@@ -371,6 +383,7 @@ were also checked at small and normal window sizes.
 - `main.py`: starts logging, then launches the app.
 - `diagnostics.py`: local rotating logs, exception hooks, and native crash traces.
 - `build_exe.py`: packages the standalone Windows executable.
+- `prepare_release.py`: prepares license notices, checked library sources, and release ZIPs.
 - `app.py`: Home/Settings navigation, connection, status, power, and file transfer interface.
 - `theme.py`: Qt dark palette and thin rounded transfer progress bar.
 - `styles.qss`: CSS-like Qt rules for the Steam-inspired interface.
