@@ -449,8 +449,16 @@ class AppTests(unittest.TestCase):
                 progress_y = self.app.progress.mapTo(self.app, QPoint()).y()
                 self.assertLess(position.y() + dock.height(), progress_y)
                 self.assertGreater(self.app.transfer_filename.mapTo(self.app, QPoint()).y(), progress_y)
-                self.assertEqual(self.app.transfer_filename.mapTo(self.app, QPoint()).x(), position.x())
-                self.assertEqual(self.app.transfer_percent.mapTo(self.app, QPoint()).x() + self.app.transfer_percent.width(), position.x() + dock.width())
+                container = self.app.transfer_metadata
+                container_position = container.mapTo(self.app, QPoint())
+                self.assertEqual(container_position.x(), position.x())
+                self.assertEqual(container.width(), dock.width())
+                self.assertGreater(container_position.y(), progress_y + self.app.progress.height())
+                self.assertGreater(self.app.transfer_filename.mapTo(self.app, QPoint()).x(), container_position.x())
+                self.assertLess(self.app.transfer_percent.mapTo(self.app, QPoint()).x() + self.app.transfer_percent.width(), container_position.x() + container.width())
+                for label in (self.app.transfer_filename, self.app.transfer_percent):
+                    self.assertGreaterEqual(label.y(), 0)
+                    self.assertLessEqual(label.y() + label.height(), container.height())
 
     def test_four_status_cards_form_two_rows_without_squashing_text(self):
         for data in (SAMPLE, dict(SAMPLE, **READINGS)):
@@ -655,7 +663,7 @@ class AppTests(unittest.TestCase):
         APPLICATION.processEvents()
         def positions():
             return tuple((widget.mapTo(self.app, QPoint()), widget.size()) for widget in (
-                self.app.drop_area, self.app.file_button, self.app.progress, self.app.transfer_percent,
+                self.app.drop_area, self.app.file_button, self.app.progress, self.app.transfer_metadata, self.app.transfer_percent,
             ))
         before = positions()
         original_size = self.app.size()

@@ -39,6 +39,10 @@ class ReleaseTests(unittest.TestCase):
             (root / "FrameConnect.exe").write_bytes(b"test executable")
             for name in ("LICENSE", "README.md", "THIRD_PARTY_NOTICES.txt", "SOURCES.md"):
                 (root / name).write_text("test notice", encoding="utf-8")
+            assets = root / "docs" / "assets"
+            assets.mkdir(parents=True)
+            for name in ("frame-connect.png", "frame-connect-home.png"):
+                (assets / name).write_bytes(b"test README image")
             (root / "licenses").mkdir()
             (root / "licenses" / "source-manifest.json").write_text("[]", encoding="utf-8")
             (root / "licenses" / "LGPL-3.0.txt").write_text("test library license", encoding="utf-8")
@@ -53,6 +57,7 @@ class ReleaseTests(unittest.TestCase):
                 self.assertEqual(set(archive.namelist()), {
                     "FrameConnect.exe", "LICENSE", "README.md", "THIRD_PARTY_NOTICES.txt", "SOURCES.md",
                     "licenses/source-manifest.json", "licenses/LGPL-3.0.txt",
+                    "docs/assets/frame-connect.png", "docs/assets/frame-connect-home.png",
                 })
             with zipfile.ZipFile(sources) as archive:
                 self.assertEqual(archive.read("library.tar.xz"), b"test corresponding source")

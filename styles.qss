@@ -17,6 +17,7 @@ QLabel#transferFileName, QLabel#transferPercent, QLabel#transferDetail { color: 
 QFrame#card { background: #232c38; border: 1px solid #344354; border-radius: 16px; }
 QFrame#dropZone { background: #121b27; border: 2px dashed #435770; border-radius: 18px; }
 QFrame#dropZone[dragActive="true"] { background: #1c2e44; border-color: #66c0f4; }
+QFrame#transferMetadata { background: #1c2531; border: 1px solid #344354; border-radius: 8px; }
 QFrame#statusFooter { background: #121b27; border: none; border-top: 1px solid #344354; }
 QLabel#footerStatus, QLabel#footerVersion { color: #a7b6c8; font-size: 12px; }
 QLabel#footerStatus[state="success"] { color: #78c78e; }

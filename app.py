@@ -17,11 +17,12 @@ from PySide6.QtWidgets import (
 from diagnostics import LOGGER, get_log_directory, get_logging_error, install_qt_message_handler
 from folder_picker import FolderPicker
 from headset import HeadsetError, HeadsetStatus, fetch_status, power_off_headset
+from preferences import DEFAULT_DESTINATION, DestinationPreferences
 from theme import BatteryIcon, ElidedLabel, StorageUsageBar, TransferProgressBar, UploadIcon, apply_dark_theme
 from transfers import TransferCancelled, upload_files
 
 
-APP_VERSION = "0.1.5"
+APP_VERSION = "0.1.6"
 REFRESH_INTERVALS = (
     ("Never", 0), ("5 seconds", 5000), ("10 seconds", 10000),
     ("30 seconds", 30000), ("1 minute", 60000), ("5 minutes", 300000),
@@ -108,8 +109,10 @@ class DropPanel(QFrame):
 
 
 class FrameConnectApp(QWidget):
-    def __init__(self):
+    def __init__(self, *, preferences=None):
         super().__init__()
+        self.preferences = preferences
+        self._default_destination = DEFAULT_DESTINATION
         apply_dark_theme(QApplication.instance())
         self.setObjectName("mainWindow")
         self.setWindowTitle("Frame Connect")
@@ -140,6 +143,7 @@ class FrameConnectApp(QWidget):
         self.host, self.user, self.key_file = QLineEdit("frame"), QLineEdit("steamos"), QLineEdit()
         self.key_file.setPlaceholderText("Use your default SSH key")
         self.entries = [self.host, self.user, self.key_file]
+        self._destination_connection = (self.host.text().strip(), self.user.text().strip())
         for entry in self.entries:
             entry.textChanged.connect(self._connection_changed)
         self._build_settings()
@@ -291,9 +295,11 @@ class FrameConnectApp(QWidget):
         transfer_layout.setSpacing(10)
         transfer_layout.addWidget(label("SEND TO STEAM FRAME", name="eyebrow"))
         destination_row = QHBoxLayout()
-        self.destination = self.destination_entry = QLineEdit("~/Downloads")
+        saved_destination = self.preferences.destination(*self._destination_connection) if self.preferences else DEFAULT_DESTINATION
+        self.destination = self.destination_entry = QLineEdit(saved_destination)
         self.destination.setAcceptDrops(False)
         self.destination.setAccessibleName("Destination folder on Steam Frame")
+        self.destination.editingFinished.connect(self._remember_destination)
         destination_row.addWidget(self.destination, 1)
         self.folder_button = button("Choose folder…", self.choose_folder)
         destination_row.addWidget(self.folder_button)
@@ -317,7 +323,12 @@ class FrameConnectApp(QWidget):
         transfer_layout.addWidget(self.drop_area)
         self.progress = TransferProgressBar()
         transfer_layout.addWidget(self.progress)
-        metadata = QHBoxLayout()
+        self.transfer_metadata = QFrame()
+        self.transfer_metadata.setObjectName("transferMetadata")
+        self.transfer_metadata.setFixedHeight(36)
+        metadata = QHBoxLayout(self.transfer_metadata)
+        metadata.setContentsMargins(12, 6, 12, 6)
+        metadata.setSpacing(10)
         self.transfer_filename = ElidedLabel("No files selected")
         self.transfer_filename.setObjectName("transferFileName")
         self.transfer_filename.setAccessibleName("Current transfer file")
@@ -327,7 +338,7 @@ class FrameConnectApp(QWidget):
         self.transfer_percent.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         self.transfer_percent.setAccessibleName("Transfer percentage")
         metadata.addWidget(self.transfer_percent)
-        transfer_layout.addLayout(metadata)
+        transfer_layout.addWidget(self.transfer_metadata)
         footer = QHBoxLayout()
         self.transfer_detail = ElidedLabel("Connect to the headset to send files.")
         self.transfer_detail.setObjectName("transferDetail")
@@ -595,6 +606,13 @@ class FrameConnectApp(QWidget):
             self.drop_area.set_drag_active(False)
 
     def _connection_changed(self, *_args):
+        identity = (self.host.text().strip(), self.user.text().strip())
+        if identity != self._destination_connection:
+            self._remember_destination()
+            self._destination_connection = identity
+            self._default_destination = DEFAULT_DESTINATION
+            path = self.preferences.destination(*identity) if self.preferences else DEFAULT_DESTINATION
+            self.destination.setText(path)
         self._last_status_error = None
         self._power_state = "idle"
         self._set_footer_status("Waiting for headset…")
@@ -606,13 +624,31 @@ class FrameConnectApp(QWidget):
             if manual_request:
                 self._set_busy(False)
             self.connect.setEnabled(not self.busy)
-            self.destination.setText("~/Downloads")
             self.connection.setText("Not connected")
             self.detail.setText("Connection settings changed. Connect again before sending files.")
             self.transfer_detail.setText("Connect to the headset to send files.")
             self._clear_status()
             self._update_transfer_controls()
             self._sync_poll_timer()
+
+    def _remember_destination(self):
+        if self.preferences is None:
+            return
+        path = self.destination.text().strip()
+        if path == self._default_destination:
+            path = DEFAULT_DESTINATION
+        try:
+            saved = self.preferences.remember(*self._destination_connection, path)
+        except HeadsetError:
+            # Blank/incomplete edits must not overwrite the last valid folder.
+            return
+        self.destination.setToolTip(
+            "" if saved else "Could not save this folder for next time. See Settings → Open log folder."
+        )
+
+    def _select_destination(self, path):
+        self.destination.setText(path)
+        self._remember_destination()
 
     def _clear_status(self):
         self.battery.setText("—")
@@ -751,7 +787,9 @@ class FrameConnectApp(QWidget):
         if self._power_state == "requested":
             self._power_state = "idle"
         was_connected = self.connected_to is not None
-        if self.destination.text() == "~/Downloads":
+        use_default = self.destination.text().strip() in (DEFAULT_DESTINATION, self._default_destination)
+        self._default_destination = status.downloads
+        if use_default:
             self.destination.setText(status.downloads)
         self.connected_to = tuple(entry.text().strip() for entry in self.entries)
         self._monitor_connection = self.connected_to
@@ -811,12 +849,13 @@ class FrameConnectApp(QWidget):
     def choose_folder(self):
         if self._can_drop():
             self._set_busy(True)
-            self.folder_picker = FolderPicker(self, self.connected_to, self.destination.setText, lambda: self._set_busy(False))
+            self.folder_picker = FolderPicker(self, self.connected_to, self._select_destination, lambda: self._set_busy(False))
             self.folder_picker.open()
 
     def start_upload(self, paths):
         if not paths or not self._can_drop():
             return False
+        self._remember_destination()
         self._set_busy(True)
         self.uploading = True
         self.cancel_upload.clear()
@@ -877,6 +916,7 @@ class FrameConnectApp(QWidget):
             folder = str(PurePosixPath(result[0]).parent)
             LOGGER.info("Upload completed: %d file(s) to %s", len(result), folder)
             self.destination.setText(folder)
+            self._remember_destination()
             self.transfer_detail.setText(f"Sent {len(result)} file(s) to {folder}.")
         else:
             completed = getattr(result, "completed", 0)
@@ -896,6 +936,7 @@ class FrameConnectApp(QWidget):
         self.transfer_detail.setText("Cancelling transfer and cleaning up…")
 
     def closeEvent(self, event):
+        self._remember_destination()
         self._closing = True
         self._auto_timer.stop()
         self._monitor_connection = self._status_request = None
@@ -917,7 +958,7 @@ def main() -> None:
     application = QApplication(sys.argv)
     application.setApplicationVersion(APP_VERSION)
     application.setWindowIcon(QIcon(str(Path(__file__).with_name("ICO") / "icon.ico")))
-    window = FrameConnectApp()
+    window = FrameConnectApp(preferences=DestinationPreferences())
     screen = application.primaryScreen()
     if screen is not None:
         available = screen.availableGeometry()

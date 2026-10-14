@@ -15,10 +15,10 @@ This application is not affiliated with Valve.
 - **Code → Download ZIP** or a Git clone provides the Python source, theme,
   launcher/build scripts, dependency files, README, and tests. Set up the Python
   environment using the instructions below to run it.
-- **Releases** provide the Windows x64 download as `FrameConnect-v0.1.5-Windows-x64.zip`.
+- **Releases** provide the Windows x64 download as `FrameConnect-v0.1.6-Windows-x64.zip`.
   Extract it and run `FrameConnect.exe`. Keep the included license notices with
   the app. Python, Qt, the theme, helper scripts and icon are bundled.
-- The companion `FrameConnect-v0.1.5-ThirdPartySources.zip` contains the source
+- The companion `FrameConnect-v0.1.6-ThirdPartySources.zip` contains the source
   of the Qt/PySide6 libraries shipped in that Windows build.
 
 Frame Connect's own code is licensed under the [MIT License](LICENSE).
@@ -30,6 +30,14 @@ The ICO folder, local backups, virtual environment, build output, executable,
 caches, and files matching the private-key ignore patterns are excluded from
 source control. These exclusions keep local files on the development PC;
 `.gitignore` does not delete them or upload the executable to Releases.
+
+## Screenshot
+
+<p align="center">
+  <img src="docs/assets/frame-connect-home.png" alt="Frame Connect v0.1.6 Home screen with headset monitoring and file transfer controls" width="800">
+</p>
+
+Frame Connect v0.1.6 connected to a Steam Frame, showing live headset readings.
 
 ## Run on this PC
 
@@ -58,7 +66,8 @@ active upload. The connection footer remains visible on both pages.
 Battery, storage, temperature, and RAM usage appear in a two-by-two card layout,
 with destination controls above a rounded, dashed file drop area. Its upload
 arrow and **select files** link are centered inside. The filename and percentage
-appear below the progress bar, with Cancel underneath on the right.
+sit in a slim, full-width rounded container below the progress bar, with Cancel
+underneath on the right.
 In a short window, the status area
 scrolls so the card text stays readable and the file drop panel stays visible.
 A slim footer stays at the bottom, with the app version on the right and
@@ -309,8 +318,14 @@ retried, because the headset may already be shutting down.
    the upload; files already completed stay on the headset.
 
 The default follows the headset's Downloads setting, including a localized or
-custom location, with `~/Downloads` as a fallback. The selected destination
-stays in use for this session. Missing destination folders are created when
+custom location, with `~/Downloads` as a fallback. Your last chosen destination
+is remembered between launches for each headset address and SteamOS username.
+Choosing a folder, finishing a typed edit, starting an upload or closing the app
+saves a valid path. Reconnecting and refreshing do not replace a custom folder.
+Selecting Downloads again restores the default behavior. Preferences are saved
+locally in `%LOCALAPPDATA%\Frame Connect\settings.json`, so they also survive
+moving or replacing the EXE. Missing or unreadable preferences use Downloads;
+no passwords or SSH key contents are stored. Missing destination folders are created when
 you send files, subject to your SteamOS user's permissions.
 
 The thin blue bar shows byte progress across all selected files. During uploads,
@@ -382,6 +397,7 @@ were also checked at small and normal window sizes.
 
 - `main.py`: starts logging, then launches the app.
 - `diagnostics.py`: local rotating logs, exception hooks, and native crash traces.
+- `preferences.py`: remembers the destination folder for each headset/account.
 - `build_exe.py`: packages the standalone Windows executable.
 - `prepare_release.py`: prepares license notices, checked library sources, and release ZIPs.
 - `app.py`: Home/Settings navigation, connection, status, power, and file transfer interface.
