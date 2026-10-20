@@ -46,9 +46,12 @@ class BatteryIcon(QWidget):
         self.setAccessibleName("Battery charge")
         self.set_level(None)
 
-    def set_level(self, percent: int | None):
+    def set_level(self, percent: int | None, *, charging=False):
         self.percent = percent
+        self.charging = percent is not None and charging
         description = "Battery level unavailable" if percent is None else f"{percent}% battery remaining"
+        if self.charging:
+            description += " · Charging"
         self.setAccessibleDescription(description)
         self.setToolTip(description)
         self.update()
@@ -69,6 +72,16 @@ class BatteryIcon(QWidget):
         elif self.percent > 0:
             painter.setBrush(QColor(COLORS["accent"]))
             painter.drawRoundedRect(QRectF(5.5, 9.5, 30 * self.percent / 100, 13), 2, 2)
+        if self.charging:
+            bolt = QPainterPath()
+            bolt.moveTo(22.5, 8.5)
+            for x, y in ((15.5, 17), (20, 17), (18.5, 23.5), (26, 14), (21.5, 14)):
+                bolt.lineTo(x, y)
+            bolt.closeSubpath()
+            painter.setPen(QPen(QColor(COLORS["text"]), 1, Qt.PenStyle.SolidLine,
+                                Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
+            painter.setBrush(QColor(COLORS["input"]))
+            painter.drawPath(bolt)
 
 
 class UploadIcon(QWidget):

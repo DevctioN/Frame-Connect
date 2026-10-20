@@ -10,7 +10,7 @@ licenses. Their notices and complete license texts are in
 The Windows release uses Python 3.15.0 and the unmodified community
 PySide6-Essentials/Shiboken 6.12.0 wheels, including Qt 6.12.0. Frame Connect
 does not modify those libraries. The companion
-`FrameConnect-v0.1.6-ThirdPartySources.zip` release asset contains the complete
+`FrameConnect-v0.1.7-ThirdPartySources.zip` release asset contains the complete
 upstream source archives for the Qt modules shipped with this app:
 
 - `qtbase-everywhere-src-6.12.0.tar.xz`: Qt Core, GUI, Widgets, Network and platform plugins.

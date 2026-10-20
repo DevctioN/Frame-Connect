@@ -15,10 +15,10 @@ This application is not affiliated with Valve.
 - **Code → Download ZIP** or a Git clone provides the Python source, theme,
   launcher/build scripts, dependency files, README, and tests. Set up the Python
   environment using the instructions below to run it.
-- **Releases** provide the Windows x64 download as `FrameConnect-v0.1.6-Windows-x64.zip`.
+- **Releases** provide the Windows x64 download as `FrameConnect-v0.1.7-Windows-x64.zip`.
   Extract it and run `FrameConnect.exe`. Keep the included license notices with
   the app. Python, Qt, the theme, helper scripts and icon are bundled.
-- The companion `FrameConnect-v0.1.6-ThirdPartySources.zip` contains the source
+- The companion `FrameConnect-v0.1.7-ThirdPartySources.zip` contains the source
   of the Qt/PySide6 libraries shipped in that Windows build.
 
 Frame Connect's own code is licensed under the [MIT License](LICENSE).
@@ -74,7 +74,13 @@ A slim footer stays at the bottom, with the app version on the right and
 connection status on the left: grey while waiting or connecting, green when
 connected, and red on connection errors. Hover over an error for its details.
 The battery icon sits beside the percentage and fills to match the reported
-charge. When available, the app reads Steam's battery estimate through the
+charge, with a small lightning bolt centered inside while charging. A full
+battery on external power shows **Fully charged**, even if the raw gauge reports
+discharging. Charger presence is read separately from the gauge's status using
+Linux's [power supply attributes](https://github.com/torvalds/linux/blob/master/Documentation/ABI/testing/sysfs-class-power).
+A connected charger below full charge can show **Plugged in · Not charging**
+when the gauge reports no charging; an unreadable charger state is left unknown.
+When available, the app reads Steam's battery estimate through the
 headset's existing local Steam interface. This avoids displaying the lower raw
 Linux gauge value when Steam scales it. The headset dashboard can still round
 or update differently from Steam's API. If that interface is unavailable, the
@@ -244,8 +250,13 @@ selected interval. **Never** disables background checks and automatic retries;
 manual checks remain available. Each background check finishes before the next
 interval begins, so a slow
 connection can take longer between readings. Existing values stay visible during
-automatic checks, and file controls remain usable. New checks pause while
-transferring files or browsing headset folders, then resume afterward.
+automatic checks, and file controls remain usable. Background checks leave the
+Refresh button's appearance unchanged. Monitoring continues at the
+selected interval during uploads and file verification, using a separate
+read-only SSH connection. Status-check errors do not cancel a transfer or reset
+its filename, percentage or progress. **Never** also disables checks during an
+upload. New checks pause while browsing headset folders or requesting shutdown,
+then resume afterward if the headset remains connected.
 If the headset goes offline, the app marks it **Headset unavailable**, shows
 the last update time, disables new transfers, and retries at the selected interval
 unless **Never** is selected. The
@@ -373,8 +384,10 @@ the four-card layout are covered by local tests using filesystem fixtures.
 Hardware testing has confirmed a successful Steam Frame connection with all
 status values populated, and a successful file transfer from a Windows PC to
 the headset. Automatic refresh, offline recovery, stale-response handling, and
-refreshes completing during transfers are covered by local tests. The automatic
-monitoring cadence, offline recovery, and headset folders beyond the tested
+checks starting and completing during transfers are covered by local tests.
+Charging, full-on-external-power labels, and the charging icon are also tested
+locally. Those charger states, the automatic monitoring cadence, offline
+recovery, and headset folders beyond the tested
 destination still need hardware verification. Missing battery data is shown as
 **Unavailable**.
 Home/Settings navigation, confirmation and cancellation, power-request errors,

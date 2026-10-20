@@ -76,6 +76,10 @@ class AppTests(unittest.TestCase):
                 self.assertFalse(self.app.busy)
                 self.assertTrue(self.app._can_drop())
                 self.assertTrue(self.app.settings_button.isEnabled())
+                self.assertTrue(self.app.connect.isEnabled())
+                self.assertEqual(self.app.connect.text(), "Refresh")
+                self.app._set_busy(False)
+                self.assertTrue(self.app.connect.isEnabled())
                 self.app._auto_refresh()
                 self.app.refresh()
                 self.assertEqual(fetch.call_count, 1)
@@ -83,6 +87,8 @@ class AppTests(unittest.TestCase):
                 release.set()
             self.assertTrue(wait_until(lambda: self.app._status_request is None))
         self.assertEqual(self.app.battery.text(), "90%")
+        self.assertTrue(self.app.connect.isEnabled())
+        self.assertEqual(self.app.connect.text(), "Refresh")
         self.assertEqual(self.app.battery_icon.percent, 90)
         self.assertEqual(self.app.storage.text(), "590.0 GiB free")
         self.assertEqual(self.app.storage_usage.fraction, .41)
@@ -154,20 +160,68 @@ class AppTests(unittest.TestCase):
         self.assertFalse(self.app._auto_timer.isActive())
         self.assertEqual(self.app.connect.text(), "Refresh")
 
-    def test_refresh_interval_changes_during_upload_apply_after_completion(self):
+    def test_refresh_interval_changes_apply_during_upload(self):
         for interval in (0, 60000):
             with self.subTest(interval=interval), patch("app.Thread"), patch("app.fetch_status") as fetch:
                 self.app.show_status(parse_status(json.dumps(SAMPLE)))
                 self.app.start_upload(("C:/clip.mp4",))
                 self.assertTrue(self.app.refresh_interval_button.isEnabled())
                 self.app.refresh_actions[interval].trigger()
-                self.assertFalse(self.app._auto_timer.isActive())
+                self.assertEqual(self.app._auto_timer.isActive(), interval > 0)
                 self.app._auto_timer.timeout.emit()
-                fetch.assert_not_called()
+                self.assertEqual(self.app._status_request is not None, interval > 0)
+                if interval:
+                    self.app._handle_status_result(self.app._status_request, parse_status(json.dumps(SAMPLE)))
+                fetch.assert_not_called()  # Worker threads are mocked in this interval test.
                 self.app._handle_transfer_result("uploaded", ("/home/steamos/Downloads/clip.mp4",))
                 self.assertEqual(self.app._auto_timer.isActive(), interval > 0)
                 if interval:
                     self.assertEqual(self.app._auto_timer.interval(), interval)
+
+    def test_monitoring_updates_during_upload_and_recovers_without_touching_transfer(self):
+        self.app.show_status(parse_status(json.dumps(dict(SAMPLE, **READINGS))))
+        self.app.destination.setText("/home/steamos/Videos")
+        started, release = Event(), Event()
+        updated = dict(SAMPLE, **READINGS)
+        updated["temperature"] = {"celsius": 60.0, "sensor": "soc-thermal"}
+        updated["memory"] = {"total": 16 * 1024**3, "available": 8 * 1024**3}
+        updated["storage"] = {"total": 1000 * 1024**3, "used": 410 * 1024**3, "free": 590 * 1024**3}
+        def upload(_host, _user, _key, _paths, destination, _cancel, progress, *, on_verifying):
+            progress("clip.mp4", 0, 1, 25, 100)
+            started.set()
+            release.wait(3)
+            return (destination + "/clip.mp4",)
+        with patch("app.upload_files", side_effect=upload), patch("app.fetch_status", side_effect=[
+            HeadsetError("Status check timed out"), parse_status(json.dumps(updated)),
+        ]) as fetch:
+            try:
+                self.assertTrue(self.app.start_upload(("C:/clip.mp4",)))
+                self.assertTrue(started.wait(1))
+                self.assertTrue(wait_until(lambda: self.app.progress.fraction == .25))
+                transfer_text = self.app.transfer_detail.text()
+                for count in (1, 2):
+                    self.assertTrue(self.app._auto_timer.isActive())
+                    self.app._auto_timer.timeout.emit()
+                    self.assertTrue(wait_until(lambda: fetch.call_count == count and self.app._status_request is None))
+                    self.assertTrue(self.app.uploading)
+                    self.assertTrue(self.app.busy)
+                    self.assertTrue(self.app.cancel_button.isEnabled())
+                    self.assertFalse(self.app.power_button.isEnabled())
+                    self.assertFalse(self.app.destination.isEnabled())
+                    self.assertEqual(self.app.destination.text(), "/home/steamos/Videos")
+                    self.assertEqual(self.app.transfer_filename.text(), "clip.mp4")
+                    self.assertEqual(self.app.transfer_percent.text(), "25%")
+                    self.assertEqual(self.app.progress.fraction, .25)
+                    self.assertEqual(self.app.transfer_detail.text(), transfer_text)
+                    self.assertFalse(self.app.cancel_upload.is_set())
+                self.assertEqual(self.app.temperature.text(), "60.0 °C")
+                self.assertEqual(self.app.ram.text(), "8.6 / 17.2 GB")
+                self.assertEqual(self.app.storage.text(), "590.0 GiB free")
+                self.assertEqual(self.app.connection.text(), "Connected to frame")
+            finally:
+                release.set()
+            self.finish_refresh()
+        self.assertIn("Sent 1 file(s) to /home/steamos/Videos", self.app.transfer_detail.text())
 
     def test_connect_button_text_tracks_connection_and_stays_refresh_during_manual_check(self):
         status = parse_status(json.dumps(SAMPLE))
@@ -406,6 +460,33 @@ class AppTests(unittest.TestCase):
         self.app.host.setText("another-frame")
         self.assertIsNone(self.app.battery_icon.percent)
         self.assertEqual(self.app.battery.text(), "—")
+
+    def test_charging_bolt_and_full_label_follow_state_and_clear_on_disconnect(self):
+        images = {}
+        for percent, state, power, text, charging in (
+            (75, "Discharging", False, "Discharging", False),
+            (75, "Charging", True, "Charging", True),
+            (100, "Discharging", True, "Fully charged", False),
+            (100, "Discharging", False, "Discharging", False),
+        ):
+            data = dict(SAMPLE, batteries=[dict(SAMPLE["batteries"][0],
+                percent=percent, state=state, external_power=power)])
+            self.app.show_status(parse_status(json.dumps(data)))
+            self.assertEqual(self.app.battery_detail.text(), text)
+            self.assertEqual(self.app.battery_icon.charging, charging)
+            self.assertIn(text, self.app.battery_icon.toolTip())
+            if percent == 75:
+                images[charging] = render(self.app.battery_icon)
+        # The bolt changes the center of the existing battery, without moving its outline.
+        self.assertNotEqual(images[False].pixelColor(21, 16), images[True].pixelColor(21, 16))
+        self.assertEqual(images[False].pixelColor(2, 16), images[True].pixelColor(2, 16))
+        self.app.show_status(parse_status(json.dumps(dict(SAMPLE, batteries=[
+            dict(SAMPLE["batteries"][0], state="Charging"),
+        ]))))
+        self.assertTrue(self.app.battery_icon.charging)
+        self.app.host.setText("another-frame")
+        self.assertFalse(self.app.battery_icon.charging)
+        self.assertIsNone(self.app.battery_icon.percent)
 
     def test_battery_tooltip_identifies_steam_estimate_and_system_fallback(self):
         for source, tooltip in (("steam", "reported by Steam"), ("system", "Raw system")):

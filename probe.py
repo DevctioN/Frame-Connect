@@ -95,6 +95,26 @@ def read_batteries(root: Path = Path("/sys/class/power_supply")) -> list[dict]:
     return batteries
 
 
+def read_external_power(root: Path = Path("/sys/class/power_supply")) -> bool | None:
+    """Read charger presence separately from the battery's instantaneous status."""
+    try:
+        supplies = sorted(root.iterdir())
+    except OSError:
+        return None
+    online = []
+    for supply in supplies:
+        kind = read_attribute(supply / "type") or ""
+        if kind not in ("Mains", "Wireless") and not kind.startswith("USB"):
+            continue
+        if read_attribute(supply / "scope") == "Device":
+            continue
+        value = read_attribute(supply / "online")
+        # USB-PD supplies can report 2 for programmable power, as well as 1.
+        if value in ("0", "1", "2"):
+            online.append(value != "0")
+    return any(online) if online else None
+
+
 def read_temperature(root: Path = Path("/sys/class/thermal")) -> dict | None:
     """Highest readable thermal-zone temperature, preserving its sensor name."""
     try:
@@ -161,6 +181,10 @@ def collect_status() -> dict:
         percent = read_steam_battery()
         if percent is not None:
             batteries[0].update(percent=percent, source="steam")
+    external_power = read_external_power()
+    if external_power is not None:
+        for battery in batteries:
+            battery["external_power"] = external_power
     return {
         "hostname": socket.gethostname(),
         "downloads": downloads_directory(),

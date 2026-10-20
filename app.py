@@ -22,7 +22,7 @@ from theme import BatteryIcon, ElidedLabel, StorageUsageBar, TransferProgressBar
 from transfers import TransferCancelled, upload_files
 
 
-APP_VERSION = "0.1.6"
+APP_VERSION = "0.1.7"
 REFRESH_INTERVALS = (
     ("Never", 0), ("5 seconds", 5000), ("10 seconds", 10000),
     ("30 seconds", 30000), ("1 minute", 60000), ("5 minutes", 300000),
@@ -583,7 +583,7 @@ class FrameConnectApp(QWidget):
         self.busy = busy
         for widget in (*self.entries, self.browse, self.connect, self.settings_button, self.settings_connection_button):
             widget.setEnabled(not busy)
-        self.connect.setEnabled(not busy and self._status_request is None)
+        self.connect.setEnabled(not busy and (self._status_request is None or self._status_request[2]))
         self._update_transfer_controls()
         self._schedule_auto_refresh()
 
@@ -693,13 +693,13 @@ class FrameConnectApp(QWidget):
         self._schedule_auto_refresh()
 
     def _schedule_auto_refresh(self):
-        if self._refresh_interval_ms and self._monitor_connection is not None and not self.busy and self._status_request is None and not self._closing:
+        if self._refresh_interval_ms and self._monitor_connection is not None and (not self.busy or self.uploading) and self._status_request is None and not self._closing:
             self._auto_timer.start()
         else:
             self._auto_timer.stop()
 
     def _auto_refresh(self):
-        if self._refresh_interval_ms and self._monitor_connection is not None and not self.busy and self._status_request is None and not self._closing:
+        if self._refresh_interval_ms and self._monitor_connection is not None and (not self.busy or self.uploading) and self._status_request is None and not self._closing:
             self._start_status_request(self._monitor_connection, automatic=True)
 
     def _start_status_request(self, connection, *, automatic):
@@ -708,7 +708,8 @@ class FrameConnectApp(QWidget):
             LOGGER.info("Manual connection check for %s", connection[0])
         # Identity lets us discard a result if settings change or the window closes.
         self._status_request = (object(), connection, automatic)
-        self.connect.setEnabled(False)
+        if not automatic:
+            self.connect.setEnabled(False)
         Thread(target=self._fetch, args=(self._status_request,), daemon=True).start()
         self._sync_poll_timer()
 
@@ -806,18 +807,18 @@ class FrameConnectApp(QWidget):
         if len(status.batteries) == 1:
             battery = status.batteries[0]
             self.battery.setText(f"{battery.percent}%")
-            self.battery_icon.set_level(battery.percent)
+            self.battery_icon.set_level(battery.percent, charging=battery.display_state == "Charging")
             source = (
                 "Battery estimate reported by Steam" if battery.source == "steam"
                 else "Raw system battery percentage · Steam estimate unavailable"
             )
             self.battery.setToolTip(source)
-            self.battery_icon.setToolTip(f"{battery.percent}% · {source}")
-            self.battery_detail.setText(battery.state)
+            self.battery_icon.setToolTip(f"{battery.percent}% · {battery.display_state} · {source}")
+            self.battery_detail.setText(battery.display_state)
         elif status.batteries:
             self.battery.setText("Multiple batteries")
             self.battery_detail.setText("\n".join(
-                f"{battery.name}: {battery.percent}% · {battery.state}" for battery in status.batteries
+                f"{battery.name}: {battery.percent}% · {battery.display_state}" for battery in status.batteries
             ))
         else:
             self.battery.setText("Unavailable")
@@ -856,8 +857,8 @@ class FrameConnectApp(QWidget):
         if not paths or not self._can_drop():
             return False
         self._remember_destination()
-        self._set_busy(True)
         self.uploading = True
+        self._set_busy(True)
         self.cancel_upload.clear()
         self.cancel_button.setEnabled(True)
         self.cancel_button.show()

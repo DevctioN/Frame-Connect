@@ -20,6 +20,17 @@ class Battery:
     percent: int
     state: str
     source: str = "system"
+    external_power: bool | None = None
+
+    @property
+    def display_state(self) -> str:
+        if self.state == "Full" or (self.percent == 100 and (
+            self.external_power is True or self.state == "Charging"
+        )):
+            return "Fully charged"
+        if self.external_power is True and self.state in ("Discharging", "Not charging", "Unknown"):
+            return "Plugged in · Not charging"
+        return self.state
 
 
 @dataclass(frozen=True)
@@ -77,7 +88,10 @@ def parse_status(output: str) -> HeadsetStatus:
             source = item.get("source", "system")
             if source not in ("system", "steam"):
                 raise ValueError("Invalid battery source")
-            batteries.append(Battery(name, percent, state, source))
+            external_power = item.get("external_power")
+            if external_power is not None and type(external_power) is not bool:
+                raise ValueError("Invalid external power state")
+            batteries.append(Battery(name, percent, state, source, external_power))
         downloads = data.get("downloads", "~/Downloads")
         if not isinstance(downloads, str) or not downloads.strip():
             raise ValueError("Invalid Downloads folder")

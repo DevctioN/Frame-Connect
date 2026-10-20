@@ -10,8 +10,8 @@ import unittest
 from unittest.mock import Mock, patch
 
 from headset import HeadsetError, parse_status
-from probe import collect_status, read_steam_battery
-from test_headset import SAMPLE
+from probe import collect_status, read_external_power, read_steam_battery
+from test_headset import SAMPLE, fixture_directory
 
 
 TARGETS = [{"title": "SharedJSContext", "webSocketDebuggerUrl":
@@ -99,6 +99,59 @@ def steam_server(reply, *, fragmented=False, bad_handshake=False, oversized=Fals
 
 
 class SteamBatteryTests(unittest.TestCase):
+    def test_charger_presence_uses_system_inputs_including_programmable_usb_power(self):
+        with fixture_directory() as root:
+            for name, attributes in {
+                "charger": {"type": "USB_PD", "scope": "System", "online": "0"},
+                "controller": {"type": "USB", "scope": "Device", "online": "1"},
+                "battery": {"type": "Battery", "online": "1"},
+                "mains": {"type": "Mains", "online": "0"},
+            }.items():
+                supply = root / name
+                supply.mkdir()
+                for attribute, value in attributes.items():
+                    (supply / attribute).write_text(value, encoding="utf-8")
+            for value, expected in (("0", False), ("1", True), ("2", True), ("unknown", False)):
+                (root / "charger/online").write_text(value, encoding="utf-8")
+                with self.subTest(online=value):
+                    self.assertIs(read_external_power(root), expected)
+            (root / "mains/online").unlink()
+            self.assertIsNone(read_external_power(root))
+            self.assertIsNone(read_external_power(root / "absent"))
+
+    def test_full_charge_label_requires_full_status_or_confirmed_power(self):
+        for percent, state, power, expected in (
+            (100, "Discharging", True, "Fully charged"),
+            (100, "Not charging", True, "Fully charged"),
+            (100, "Charging", True, "Fully charged"),
+            (100, "Charging", None, "Fully charged"),
+            (99, "Full", None, "Fully charged"),
+            (100, "Discharging", False, "Discharging"),
+            (100, "Discharging", None, "Discharging"),
+            (75, "Charging", True, "Charging"),
+            (75, "Discharging", True, "Plugged in · Not charging"),
+            (75, "Unknown", None, "Unknown"),
+        ):
+            with self.subTest(percent=percent, state=state, power=power):
+                data = dict(SAMPLE, batteries=[dict(SAMPLE["batteries"][0],
+                    percent=percent, state=state, external_power=power)])
+                self.assertEqual(parse_status(json.dumps(data)).batteries[0].display_state, expected)
+        for value in (1, 0, "true", [], {}):
+            data = dict(SAMPLE, batteries=[dict(SAMPLE["batteries"][0], external_power=value)])
+            with self.subTest(invalid=value), self.assertRaises(HeadsetError):
+                parse_status(json.dumps(data))
+
+    def test_collector_combines_steam_percentage_with_independent_charger_presence(self):
+        with patch("probe.read_batteries", return_value=[dict(SAMPLE["batteries"][0])]), patch(
+            "probe.read_steam_battery", return_value=100
+        ), patch("probe.read_external_power", return_value=True):
+            battery = parse_status(json.dumps(collect_status())).batteries[0]
+        self.assertEqual(battery.percent, 100)
+        self.assertEqual(battery.source, "steam")
+        self.assertEqual(battery.state, "Discharging")
+        self.assertIs(battery.external_power, True)
+        self.assertEqual(battery.display_state, "Fully charged")
+
     def test_reports_steam_percentage_including_zero_and_rounds_without_offset(self):
         for level, percent in ((0, 0), (.934, 93), (.995, 100), (1, 100)):
             with self.subTest(level=level), steam_server({"id": 1, "result": {"result": {"value": level}}}) as requests:
