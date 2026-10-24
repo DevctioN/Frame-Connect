@@ -4,6 +4,13 @@
 
 # Frame Connect
 
+<p align="center">
+  <a href="https://github.com/DevctioN/FrameConnect/releases/latest"><img src="https://img.shields.io/github/v/release/DevctioN/FrameConnect?label=release&amp;color=1a9fff" alt="Latest release"></a>
+  <a href="#github-downloads"><img src="https://img.shields.io/badge/runs%20on-Windows%20x64-2a475e" alt="Runs on Windows x64"></a>
+  <a href="https://github.com/DevctioN/FrameConnect/actions/workflows/checks.yml"><img src="https://img.shields.io/github/actions/workflow/status/DevctioN/FrameConnect/checks.yml?branch=main&amp;event=push&amp;label=checks" alt="Automated checks"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-66c0f4" alt="MIT license"></a>
+</p>
+
 A small Python desktop companion for Steam Frame. Connect over SSH to see
 battery, storage, temperature, and RAM usage, and drag files from Windows Explorer into a folder
 on the headset.
@@ -405,6 +412,12 @@ were also checked at small and normal window sizes.
 ```powershell
 .\.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
+
+The same suite runs on Windows in [GitHub Actions](https://github.com/DevctioN/FrameConnect/actions/workflows/checks.yml)
+for pushes to `main` and pull requests. The **checks** badge above reports the
+latest push result on `main`; it gets its first result after the workflow is
+pushed and runs on GitHub. These tests use local fixtures and do not connect to
+or change a real headset.
 
 ## Code map
 
