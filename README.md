@@ -2,7 +2,7 @@
   <img src="docs/assets/frame-connect.png" alt="Frame Connect logo" width="160" height="160">
 </p>
 
-# Frame Connect
+# Frame Connect - Steam Frame VR Headset Manager
 
 <p align="center">
   <a href="https://github.com/DevctioN/FrameConnect/releases/latest"><img src="https://img.shields.io/github/v/release/DevctioN/FrameConnect?label=release&amp;color=1a9fff" alt="Latest release"></a>
@@ -11,11 +11,9 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-66c0f4" alt="MIT license"></a>
 </p>
 
-A small Python desktop companion for Steam Frame. Connect over SSH to see
-battery, storage, temperature, and RAM usage, and drag files from Windows Explorer into a folder
-on the headset.
+FrameConnect is a free, open-source desktop application for the Valve Steam Frame VR headset. Connect over SSH to see battery, storage, temperature, and RAM usage, and drag files from Windows Explorer into a folder on the headset.
 
-This application is not affiliated with Valve.
+This application is not affiliated with Valve Corporation.
 
 ## GitHub downloads
 
